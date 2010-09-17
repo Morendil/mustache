@@ -130,7 +130,7 @@ EOF
       if SKIP_WHITESPACE.include?(type) then
         # Discard leading whitespace before opening/closing sections
         backOne = @result[-1]
-        backOne = [nil,"\n"] if (backOne == nil || backOne == :multi)
+        backOne = [nil,"\n"] if !backOne.is_a?(Array)
         @result.pop if (@separated && backOne[0] == :static && backOne[1].match(/^[ \t]+$/))
       end
 
