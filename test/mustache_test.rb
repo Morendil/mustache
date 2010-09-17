@@ -13,25 +13,37 @@ class MustacheTest < Test::Unit::TestCase
 end_passenger
   end
 
+  def test_heredoc_sanity
+    assert_equal <<-end_heredoc, "<h1>Colors</h1>\n  <ul>\n      <li><strong>red</strong></li>\n      <li><a href=\"#Green\">green</a></li>\n      <li><a href=\"#Blue\">blue</a></li>\n  </ul>\n" 
+<h1>Colors</h1>
+  <ul>
+      <li><strong>red</strong></li>
+      <li><a href="#Green">green</a></li>
+      <li><a href="#Blue">blue</a></li>
+  </ul>
+end_heredoc
+  end
+
   def test_complex_view
     assert_equal <<-end_complex, ComplexView.render
 <h1>Colors</h1>
-<ul>
-  <li><strong>red</strong></li>
-    <li><a href="#Green">green</a></li>
-    <li><a href="#Blue">blue</a></li>
-    </ul>
+  <ul>
+      <li><strong>red</strong></li>
+      <li><a href="#Green">green</a></li>
+      <li><a href="#Blue">blue</a></li>
+  </ul>
 end_complex
   end
 
   def test_nested_objects
     assert_equal <<-end_complex, NestedObjects.render
 <h1>Colors</h1>
-<ul>
-  <li><strong>red</strong></li>
-    <li><a href="#Green">green</a></li>
-    <li><a href="#Blue">blue</a></li>
-    </ul>
+  <ul>
+      <li><strong>red</strong></li>
+      <li><a href="#Green">green</a></li>
+      <li><a href="#Blue">blue</a></li>
+  </ul>
+
 end_complex
   end
 
@@ -131,12 +143,9 @@ end_simple
 
   def test_delimiters
     assert_equal <<-end_template, Delimiters.render
-
 * It worked the first time.
-
 * And it worked the second time.
 * As well as the third.
-
 * Then, surprisingly, it worked the final time.
 end_template
   end
@@ -229,7 +238,7 @@ data
         raise "bummer"
       end
     end
-    instance.template = '{{#show}} <li>{{die}}</li> {{/show}} yay'
+    instance.template = '{{#show}} <li>{{die}}</li> {{/show}}yay'
 
     assert_equal "yay", instance.render
   end
@@ -380,7 +389,7 @@ data
 {{#items}}
 start
 {{#items}}
-  {{a}}
+{{a}}
 {{/items}}
 end
 {{/items}}
@@ -478,7 +487,7 @@ template
 {{#items}}
 start
 {{#map}}
-  {{a}}
+{{a}}
 {{/map}}
 end
 {{/items}}
@@ -510,11 +519,12 @@ start
 end
 expected
   end
+
       def test_indentation
     template = <<template
 SELECT
   {{#cols}}
-    {{name}},
+  {{name}},
   {{/cols}}
 FROM
   DUMMY1

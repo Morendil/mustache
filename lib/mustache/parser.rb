@@ -45,7 +45,7 @@ EOF
     end
 
     # After these types of tags, all whitespace will be skipped.
-    SKIP_WHITESPACE = [ '#', '^', '/' ]
+    SKIP_WHITESPACE = [ '#', '^', '/', '=' ]
 
     # The content allowed in a tag name.
     ALLOWED_CONTENT = /(\w|[?!\/-])*/
@@ -55,7 +55,7 @@ EOF
     ANY_CONTENT = [ '!', '=' ]
 
     attr_reader :scanner, :result
-    attr_writer :otag, :ctag
+    attr_writer :otag, :ctag, :separated
 
     # Accepts an options hash which does nothing but may be used in
     # the future.
@@ -103,13 +103,16 @@ EOF
 
     # Find {{mustaches}} and add them to the @result array.
     def scan_tags
-      # Scan until we hit an opening delimiter.
+      # Scan until we hit an opening delimiter, also break on newline
       return unless @scanner.scan(regexp(otag))
 
       # Since {{= rewrites ctag, we store the ctag which should be used
       # when parsing this specific tag.
       current_ctag = self.ctag
       type = @scanner.scan(/#|\^|\/|=|!|<|>|&|\{/)
+      # The closing } in unescaped tags is just a hack for
+      # aesthetics.
+      balance = type == '{' ? '}' : type
       @scanner.skip(/\s*/)
 
       # ANY_CONTENT tags allow any character inside of them, while
@@ -124,16 +127,34 @@ EOF
       # We found {{ but we can't figure out what's going on inside.
       error "Illegal content in tag" if content.empty?
 
+      if SKIP_WHITESPACE.include?(type) then
+        # Discard leading whitespace before opening/closing sections
+        backOne = @result[-1]
+        backOne = [nil,"\n"] if (backOne == nil || backOne == :multi)
+        @result.pop if (@separated && backOne[0] == :static && backOne[1].match(/^[ \t]+$/))
+      end
+
+      # Skip whitespace and any balancing sigils after the content
+      # inside this tag.
+      @scanner.skip(/\s+/)
+      @scanner.skip(regexp(balance)) if balance
+
+      # Try to find the closing tag.
+      unless close = @scanner.scan(regexp(current_ctag))
+        error "Unclosed tag"
+      end
+
+      # Skip whitespace following this tag if we need to.
+      # We shouldn't eat more whitespace than trailing until newline
+      skipped = @scanner.skip(/[ \t]*\n/) if SKIP_WHITESPACE.include?(type)
+      @separated = skipped != nil
+
       # Based on the sigil, do what needs to be done.
       case type
-      when '#'
+      when '#', '^'
+        stype = type == '#' ? :section : :inverted_section 
         block = [:multi]
-        @result << [:mustache, :section, content, block]
-        @sections << [content, position, @result]
-        @result = block
-      when '^'
-        block = [:multi]
-        @result << [:mustache, :inverted_section, content, block]
+        @result << [:mustache, stype, content, block]
         @sections << [content, position, @result]
         @result = block
       when '/'
@@ -152,31 +173,21 @@ EOF
       when '>', '<'
         @result << [:mustache, :partial, content]
       when '{', '&'
-        # The closing } in unescaped tags is just a hack for
-        # aesthetics.
-        type = "}" if type == "{"
         @result << [:mustache, :utag, content]
       else
         @result << [:mustache, :etag, content]
       end
 
-      # Skip whitespace and any balancing sigils after the content
-      # inside this tag.
-      @scanner.skip(/\s+/)
-      @scanner.skip(regexp(type)) if type
-
-      # Try to find the closing tag.
-      unless close = @scanner.scan(regexp(current_ctag))
-        error "Unclosed tag"
-      end
-
-      # Skip whitespace following this tag if we need to.
-      @scanner.skip(/\s+/) if SKIP_WHITESPACE.include?(type)
     end
 
     # Try to find static text, e.g. raw HTML with no {{mustaches}}.
     def scan_text
-      text = scan_until_exclusive(regexp(otag))
+      # Break on newlines
+      text = scan_until_exclusive(/#{Regexp.escape(otag)}|\n/)
+      if @scanner.peek(1) == "\n"
+        @separated = true
+        text += @scanner.getch
+      end
 
       if text.nil?
         # Couldn't find any otag, which means the rest is just static text.
@@ -187,7 +198,7 @@ EOF
 
       text.force_encoding(@encoding) if @encoding
 
-      @result << [:static, text]
+      @result << [:static, text] unless text == ""
     end
 
     # Scans the string until the pattern is matched. Returns the substring

@@ -98,37 +98,37 @@ end_partial
 <html>
   <body>
     <ul>
-      <li>
+        <li>
   1
   <ul>
-    <li>
+      <li>
   2
   <ul>
-    <li>
+      <li>
   3
   <ul>
-    </ul>
+  </ul>
 </li>
-    </ul>
+  </ul>
 </li>
-    <li>
+      <li>
   4
   <ul>
-    <li>
+      <li>
   5
   <ul>
-    <li>
+      <li>
   6
   <ul>
-    </ul>
+  </ul>
+</li>
+  </ul>
+</li>
+  </ul>
+</li>
+  </ul>
 </li>
     </ul>
-</li>
-    </ul>
-</li>
-    </ul>
-</li>
-      </ul>
   </body>
 </html>
 end_partial
